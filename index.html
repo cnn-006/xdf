@@ -1,0 +1,1125 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>幸运抽奖 - 微信小程序版</title>
+    <style>
+        :root {
+            --primary: #4A90D9;
+            --primary-dark: #357ABD;
+            --primary-light: #E8F2FB;
+            --success: #52C41A;
+            --warning: #FA8C16;
+            --danger: #FF4D4F;
+            --bg: #F5F7FA;
+            --card: #FFFFFF;
+            --text: #333333;
+            --text-secondary: #888888;
+            --text-light: #B0B0B0;
+            --border: #E8E8E8;
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+            --shadow-hover: 0 8px 32px rgba(0, 0, 0, 0.10);
+            --radius: 16px;
+            --radius-sm: 10px;
+            --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 0;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 430px;
+            min-height: 100vh;
+            background: var(--bg);
+            position: relative;
+            overflow-x: hidden;
+            box-shadow: 0 0 60px rgba(0, 0, 0, 0.08);
+        }
+
+        @media (min-width: 431px) {
+            body {
+                align-items: flex-start;
+                padding-top: 20px;
+                padding-bottom: 20px;
+            }
+            .app-container {
+                border-radius: 24px;
+                min-height: auto;
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.12);
+            }
+        }
+
+        .nav-bar {
+            background: var(--card);
+            padding: 0 20px;
+            height: 52px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid var(--border);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        .nav-title {
+            font-size: 17px;
+            font-weight: 600;
+            color: var(--text);
+            letter-spacing: 0.5px;
+        }
+        .nav-back {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 15px;
+            color: var(--primary);
+            cursor: pointer;
+            padding: 6px 10px;
+            border-radius: 20px;
+            transition: var(--transition);
+            display: none;
+            background: none;
+            border: none;
+        }
+        .nav-back.show {
+            display: block;
+        }
+        .nav-back:active {
+            background: var(--primary-light);
+        }
+
+        .page {
+            display: none;
+            padding: 20px 16px 40px;
+            animation: fadeInUp 0.35s ease;
+        }
+        .page.active {
+            display: block;
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(16px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes popIn {
+            0% { opacity: 0; transform: scale(0.85); }
+            60% { transform: scale(1.03); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-8px); }
+            50% { transform: translateY(0); }
+            70% { transform: translateY(-5px); }
+        }
+        @keyframes confetti-fall {
+            0% { transform: translateY(-60px) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+        }
+
+        .card {
+            background: var(--card);
+            border-radius: var(--radius);
+            padding: 24px 20px;
+            margin-bottom: 16px;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+        }
+        .card-header {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .card-header .icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 15px;
+        }
+        .icon-blue { background: #E8F2FB; color: #4A90D9; }
+        .icon-green { background: #E8F8E8; color: #52C41A; }
+        .icon-orange { background: #FFF3E8; color: #FA8C16; }
+        .icon-red { background: #FFEBEB; color: #FF4D4F; }
+        .icon-purple { background: #F3E8FF; color: #7C3AED; }
+
+        .form-group { margin-bottom: 16px; }
+        .form-label {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text);
+            margin-bottom: 8px;
+            display: block;
+            letter-spacing: 0.3px;
+        }
+        .form-input {
+            width: 100%;
+            height: 48px;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 0 16px;
+            font-size: 15px;
+            color: var(--text);
+            background: #FAFAFA;
+            transition: var(--transition);
+            outline: none;
+            -webkit-appearance: none;
+            letter-spacing: 0.5px;
+        }
+        .form-input:focus {
+            border-color: var(--primary);
+            background: #FFF;
+            box-shadow: 0 0 0 4px rgba(74, 144, 217, 0.08);
+        }
+        .form-input::placeholder { color: #C0C0C0; }
+        .form-input:disabled {
+            background: #F0F0F0;
+            color: #AAA;
+            cursor: not-allowed;
+        }
+        .form-hint {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 6px;
+            line-height: 1.5;
+        }
+
+        .upload-area {
+            width: 100%;
+            min-height: 140px;
+            border: 2px dashed #D0D8E0;
+            border-radius: var(--radius-sm);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition);
+            background: #FAFBFC;
+            position: relative;
+            overflow: hidden;
+            padding: 20px;
+        }
+        .upload-area:hover { border-color: var(--primary); background: #F8FAFD; }
+        .upload-area:active { border-color: var(--primary-dark); background: #F0F5FA; transform: scale(0.98); }
+        .upload-area.has-image {
+            border-style: solid;
+            border-color: var(--success);
+            background: #FAFFFA;
+            padding: 8px;
+            min-height: auto;
+        }
+        .upload-icon { font-size: 40px; margin-bottom: 10px; transition: var(--transition); opacity: 0.7; }
+        .upload-area.has-image .upload-icon { display: none; }
+        .upload-text { font-size: 14px; color: var(--text-secondary); transition: var(--transition); }
+        .upload-area.has-image .upload-text { display: none; }
+        .upload-preview {
+            display: none;
+            width: 100%;
+            max-height: 280px;
+            border-radius: 8px;
+            object-fit: cover;
+        }
+        .upload-area.has-image .upload-preview { display: block; }
+        .upload-remove {
+            display: none;
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.55);
+            color: #FFF;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            line-height: 28px;
+            text-align: center;
+            transition: var(--transition);
+            z-index: 5;
+        }
+        .upload-area.has-image .upload-remove { display: block; }
+        .upload-remove:active { background: rgba(255, 77, 79, 0.85); transform: scale(1.1); }
+
+        .btn {
+            width: 100%;
+            height: 50px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: var(--transition);
+            border: none;
+            outline: none;
+            -webkit-appearance: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-primary {
+            background: var(--primary);
+            color: #FFF;
+            box-shadow: 0 6px 20px rgba(74, 144, 217, 0.3);
+        }
+        .btn-primary:active { background: var(--primary-dark); transform: translateY(1px); box-shadow: 0 3px 10px rgba(74, 144, 217, 0.25); }
+        .btn-primary:disabled { background: #C0CFE0; color: #E8E8E8; cursor: not-allowed; box-shadow: none; transform: none; }
+        .btn-outline { background: #FFF; color: var(--primary); border: 2px solid var(--primary); }
+        .btn-outline:active { background: var(--primary-light); transform: translateY(1px); }
+        .btn-danger { background: #FFF; color: var(--danger); border: 2px solid #FFB8B8; }
+        .btn-danger:active { background: #FFF5F5; border-color: var(--danger); }
+        .btn-sm {
+            height: 36px;
+            font-size: 13px;
+            letter-spacing: 0.5px;
+            border-radius: 18px;
+            padding: 0 16px;
+            width: auto;
+            display: inline-flex;
+        }
+
+        .toast {
+            position: fixed;
+            top: 60px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-20px);
+            background: rgba(0, 0, 0, 0.82);
+            color: #FFF;
+            padding: 12px 24px;
+            border-radius: 24px;
+            font-size: 14px;
+            font-weight: 500;
+            z-index: 9999;
+            opacity: 0;
+            transition: all 0.35s ease;
+            pointer-events: none;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+            max-width: 90%;
+            text-align: center;
+        }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        .toast.success { background: rgba(82, 196, 26, 0.9); }
+        .toast.error { background: rgba(255, 77, 79, 0.9); }
+        .toast.warning { background: rgba(250, 140, 22, 0.9); }
+
+        .participant-list { max-height: 300px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+        .participant-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid #F5F5F5;
+            transition: var(--transition);
+        }
+        .participant-item:last-child { border-bottom: none; }
+        .participant-avatar {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            object-fit: cover;
+            background: #F0F0F0;
+            flex-shrink: 0;
+        }
+        .participant-info { flex: 1; min-width: 0; }
+        .participant-name { font-weight: 500; font-size: 15px; color: var(--text); }
+        .participant-time { font-size: 12px; color: var(--text-light); margin-top: 2px; }
+        .participant-index {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            background: #F5F5F5;
+            color: var(--text-secondary);
+            font-size: 12px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .winner-card {
+            background: linear-gradient(135deg, #FFF9E6, #FFF3CC);
+            border: 2px solid #FFD700;
+            border-radius: var(--radius);
+            padding: 20px;
+            margin-bottom: 12px;
+            animation: popIn 0.5s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .winner-card::before {
+            content: '🏆';
+            position: absolute;
+            top: -10px;
+            right: 14px;
+            font-size: 48px;
+            opacity: 0.3;
+            animation: bounce 2s ease infinite;
+        }
+        .winner-name { font-size: 18px; font-weight: 700; color: #8B6914; letter-spacing: 1px; }
+        .winner-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid #FFD700;
+        }
+        .winner-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            padding: 10px 0;
+        }
+        .winner-tag {
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+            color: #FFF;
+            padding: 8px 18px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 14px;
+            letter-spacing: 1px;
+            animation: popIn 0.5s ease;
+            box-shadow: 0 4px 12px rgba(255, 165, 0, 0.3);
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+        .status-active { background: #E8F8E8; color: #389E0D; }
+        .status-ended { background: #FFEBEB; color: #CF1322; }
+        .status-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+        .status-dot.green { background: #52C41A; animation: pulse 1.5s ease infinite; }
+        .status-dot.red { background: #FF4D4F; }
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(82, 196, 26, 0.5); }
+            50% { box-shadow: 0 0 0 10px rgba(82, 196, 26, 0); }
+        }
+
+        .countdown {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            align-items: center;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+        .countdown-num {
+            background: var(--text);
+            color: #FFF;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 15px;
+            min-width: 32px;
+            text-align: center;
+            letter-spacing: 1px;
+        }
+        .countdown-sep { font-weight: 700; color: var(--text); font-size: 15px; }
+
+        .empty-state { text-align: center; padding: 40px 20px; color: var(--text-light); }
+        .empty-state .empty-icon { font-size: 56px; margin-bottom: 12px; }
+        .empty-state .empty-text { font-size: 14px; letter-spacing: 0.5px; }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.25s ease;
+        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .modal {
+            background: #FFF;
+            border-radius: var(--radius);
+            padding: 24px 20px;
+            width: 85%;
+            max-width: 360px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+            animation: popIn 0.35s ease;
+        }
+        .modal-title { font-size: 17px; font-weight: 600; margin-bottom: 16px; text-align: center; }
+        .modal-input {
+            width: 100%;
+            height: 44px;
+            border: 2px solid var(--border);
+            border-radius: 22px;
+            padding: 0 16px;
+            font-size: 15px;
+            text-align: center;
+            letter-spacing: 2px;
+            outline: none;
+            transition: var(--transition);
+            -webkit-appearance: none;
+        }
+        .modal-input:focus { border-color: var(--primary); }
+        .modal-buttons { display: flex; gap: 12px; margin-top: 16px; }
+        .modal-buttons .btn { flex: 1; height: 42px; font-size: 14px; letter-spacing: 0.5px; }
+
+        .confetti-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 9998;
+        }
+        .confetti-piece {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border-radius: 2px;
+            animation: confetti-fall 2.5s ease-out forwards;
+        }
+
+        .safe-bottom { height: env(safe-area-inset-bottom, 20px); }
+        .hidden-input { display: none; }
+
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #DDD; border-radius: 2px; }
+
+        .config-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+        .config-row label { font-weight: 500; font-size: 14px; flex-shrink: 0; margin-right: 12px; }
+        .config-row input {
+            flex: 1;
+            height: 40px;
+            border: 2px solid var(--border);
+            border-radius: 20px;
+            padding: 0 14px;
+            font-size: 14px;
+            background: #FAFAFA;
+            transition: var(--transition);
+            outline: none;
+            text-align: center;
+        }
+        .config-row input:focus {
+            border-color: var(--primary);
+            background: #FFF;
+            box-shadow: 0 0 0 3px rgba(74, 144, 217, 0.08);
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container" id="app">
+        <div class="nav-bar">
+            <button class="nav-back" id="navBack" onclick="goToPage('home')">← 返回</button>
+            <span class="nav-title" id="navTitle">🎯 幸运抽奖</span>
+        </div>
+
+        <!-- 首页 -->
+        <div class="page active" id="page-home">
+            <div class="card" style="text-align:center;">
+                <div style="font-size:48px;margin-bottom:8px;">🎁</div>
+                <div style="font-size:20px;font-weight:700;letter-spacing:2px;margin-bottom:6px;">幸运抽奖</div>
+                <div style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;">上传图片，留下姓名，参与抽奖</div>
+                <div id="statusBadge">
+                    <span class="status-badge status-active"><span class="status-dot green"></span> 活动进行中</span>
+                </div>
+                <div class="countdown" id="countdownArea" style="margin-top:10px;">
+                    距离截止：<span class="countdown-num" id="cdDay">00</span><span class="countdown-sep">天</span>
+                    <span class="countdown-num" id="cdHour">00</span><span class="countdown-sep">:</span>
+                    <span class="countdown-num" id="cdMin">00</span><span class="countdown-sep">:</span>
+                    <span class="countdown-num" id="cdSec">00</span>
+                </div>
+                <div style="font-size:12px;color:var(--text-light);margin-top:6px;">
+                    已有 <strong id="participantCount" style="color:var(--primary);">0</strong> 人参与
+                </div>
+            </div>
+
+            <div class="card" id="formCard">
+                <div class="card-header"><span class="icon icon-blue">📝</span> 填写信息</div>
+                <div class="form-group">
+                    <label class="form-label">你的姓名</label>
+                    <input class="form-input" type="text" id="inputName" placeholder="请输入你的姓名" maxlength="20" autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">上传图片</label>
+                    <div class="upload-area" id="uploadArea" onclick="triggerUpload()">
+                        <span class="upload-icon">📷</span>
+                        <span class="upload-text">点击上传图片</span>
+                        <img class="upload-preview" id="uploadPreview" src="" alt="预览">
+                        <button class="upload-remove" id="uploadRemove" onclick="removeImage(event)">✕</button>
+                    </div>
+                    <div class="form-hint">支持 JPG/PNG 格式，图片大小不超过 5MB</div>
+                </div>
+                <input type="file" class="hidden-input" id="fileInput" accept="image/*" onchange="handleFileSelect(event)">
+                <button class="btn btn-primary" id="submitBtn" onclick="submitParticipant()">✅ 立即参与抽奖</button>
+            </div>
+
+            <div class="card" id="endedCard" style="display:none;text-align:center;">
+                <div style="font-size:48px;margin-bottom:8px;">⏰</div>
+                <div style="font-size:18px;font-weight:600;color:var(--danger);margin-bottom:6px;">活动已结束</div>
+                <div style="font-size:13px;color:var(--text-secondary);">感谢关注，敬请期待下次活动</div>
+                <button class="btn btn-outline btn-sm" style="margin-top:12px;" onclick="goToPage('result')">查看中奖结果</button>
+            </div>
+
+            <div style="text-align:center;margin-top:8px;">
+                <button class="btn btn-outline btn-sm" onclick="goToPage('result')" style="margin-right:8px;">🏆 中奖名单</button>
+                <button class="btn btn-sm" style="background:#F5F5F5;color:var(--text-secondary);" onclick="showAdminModal()">⚙️ 管理</button>
+            </div>
+            <div class="safe-bottom"></div>
+        </div>
+
+        <!-- 中奖结果页 -->
+        <div class="page" id="page-result">
+            <div class="card" style="text-align:center;">
+                <div style="font-size:48px;margin-bottom:8px;">🏆</div>
+                <div style="font-size:20px;font-weight:700;letter-spacing:2px;margin-bottom:4px;">中奖名单</div>
+                <div style="font-size:13px;color:var(--text-secondary);">
+                    共抽出 <strong id="winnerCountDisplay" style="color:#FA8C16;">0</strong> 位幸运儿
+                </div>
+            </div>
+            <div id="winnerListContainer">
+                <div class="empty-state"><div class="empty-icon">🎯</div><div class="empty-text">暂未开奖，敬请期待</div></div>
+            </div>
+            <div style="text-align:center;margin-top:12px;">
+                <button class="btn btn-outline btn-sm" onclick="goToPage('home')">← 返回参与</button>
+            </div>
+            <div class="safe-bottom"></div>
+        </div>
+
+        <!-- 管理页面 -->
+        <div class="page" id="page-admin">
+            <div class="card">
+                <div class="card-header"><span class="icon icon-purple">⚙️</span> 活动配置</div>
+                <div class="config-row">
+                    <label>📅 截止时间</label>
+                    <input type="datetime-local" id="configDeadline" step="1">
+                </div>
+                <div class="config-row">
+                    <label>👥 中奖人数</label>
+                    <input type="number" id="configWinnerCount" min="1" max="100" value="3">
+                </div>
+                <div style="margin-top:12px;">
+                    <button class="btn btn-primary btn-sm" style="width:100%;" onclick="saveConfig()">💾 保存配置</button>
+                </div>
+                <div class="form-hint" style="text-align:center;">修改后立即生效，刷新不丢失</div>
+            </div>
+
+            <div class="card">
+                <div class="card-header"><span class="icon icon-orange">📋</span> 参与者管理</div>
+                <div style="font-size:14px;color:var(--text-secondary);margin-bottom:8px;">
+                    总参与人数：<strong id="adminTotalCount" style="color:var(--primary);font-size:18px;">0</strong>
+                </div>
+                <div class="participant-list" id="adminParticipantList">
+                    <div class="empty-state"><div class="empty-icon">📭</div><div class="empty-text">暂无参与者</div></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header"><span class="icon icon-red">🎰</span> 抽奖操作</div>
+                <div style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;">
+                    当前设置：中奖人数 <strong id="adminWinnerCount" style="color:var(--warning);">3</strong> 人
+                </div>
+                <div style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;">
+                    截止时间：<strong id="adminDeadline" style="color:var(--text);">-</strong>
+                </div>
+                <button class="btn btn-primary" id="adminDrawBtn" onclick="executeDraw()">🎯 手动开奖</button>
+                <div class="form-hint" style="text-align:center;margin-top:8px;">
+                    ⚡ 截止时间到会自动开奖，也可随时手动提前开奖
+                </div>
+                <button class="btn btn-danger btn-sm" style="margin-top:10px;width:100%;" onclick="resetDraw()">🔄 重置抽奖结果</button>
+            </div>
+
+            <div class="card" id="adminWinnerSection" style="display:none;">
+                <div class="card-header"><span class="icon icon-green">🏆</span> 中奖结果</div>
+                <div id="adminWinnerList"></div>
+            </div>
+
+            <div style="text-align:center;margin-top:12px;">
+                <button class="btn btn-outline btn-sm" onclick="goToPage('home')">← 返回首页</button>
+            </div>
+            <div class="safe-bottom"></div>
+        </div>
+
+        <div class="toast" id="toast"></div>
+        <div class="modal-overlay" id="adminModal" style="display:none;" onclick="closeAdminModal(event)">
+            <div class="modal" onclick="event.stopPropagation()">
+                <div class="modal-title">🔐 管理员验证</div>
+                <input class="modal-input" type="password" id="adminPasswordInput" placeholder="请输入管理密码" maxlength="20">
+                <div class="modal-buttons">
+                    <button class="btn btn-outline btn-sm" onclick="closeAdminModal()">取消</button>
+                    <button class="btn btn-primary btn-sm" onclick="verifyAdmin()">确认</button>
+                </div>
+            </div>
+        </div>
+        <div class="confetti-container" id="confettiContainer"></div>
+    </div>
+
+    <script>
+        const DEFAULT_CONFIG = {
+            DEADLINE: '2026-07-30 23:59:59',
+            WINNER_COUNT: 3,
+            ADMIN_PASSWORD: 'xdf6666',
+            MAX_IMAGE_SIZE: 5 * 1024 * 1024,
+        };
+
+        let CONFIG = { ...DEFAULT_CONFIG };
+        let currentPage = 'home';
+        let selectedImageData = null;
+        let allParticipants = [];
+        let winners = [];
+        let countdownTimer = null;
+        let autoDrawTriggered = false; // 防止重复自动开奖
+
+        function init() {
+            loadConfigFromStorage();
+            loadData();
+            updateUI();
+            startCountdown();
+            countdownTimer = setInterval(() => {
+                updateCountdown();
+                updateUI();
+                checkAutoDraw(); // 每次计时器更新时检查是否需要自动开奖
+            }, 1000);
+        }
+
+        function loadConfigFromStorage() {
+            try {
+                const saved = localStorage.getItem('lottery_config');
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    if (parsed.DEADLINE) CONFIG.DEADLINE = parsed.DEADLINE;
+                    if (parsed.WINNER_COUNT) CONFIG.WINNER_COUNT = parseInt(parsed.WINNER_COUNT, 10) || DEFAULT_CONFIG.WINNER_COUNT;
+                    if (parsed.ADMIN_PASSWORD) CONFIG.ADMIN_PASSWORD = parsed.ADMIN_PASSWORD;
+                }
+            } catch (e) { console.warn('配置读取失败', e); }
+        }
+
+        function saveConfigToStorage() {
+            try {
+                const configToSave = {
+                    DEADLINE: CONFIG.DEADLINE,
+                    WINNER_COUNT: CONFIG.WINNER_COUNT,
+                    ADMIN_PASSWORD: CONFIG.ADMIN_PASSWORD,
+                };
+                localStorage.setItem('lottery_config', JSON.stringify(configToSave));
+            } catch (e) { showToast('配置保存失败', 'error'); }
+        }
+
+        function loadData() {
+            try {
+                const savedParticipants = localStorage.getItem('lottery_participants');
+                allParticipants = savedParticipants ? JSON.parse(savedParticipants) : [];
+                const savedWinners = localStorage.getItem('lottery_winners');
+                winners = savedWinners ? JSON.parse(savedWinners) : [];
+                // 如果已有中奖者，标记自动抽奖已触发，避免再次自动开奖
+                autoDrawTriggered = winners.length > 0;
+            } catch (e) {
+                allParticipants = [];
+                winners = [];
+            }
+        }
+
+        function saveParticipants() {
+            try { localStorage.setItem('lottery_participants', JSON.stringify(allParticipants)); } catch (e) { showToast('存储空间不足', 'error'); }
+        }
+
+        function saveWinners() {
+            try { localStorage.setItem('lottery_winners', JSON.stringify(winners)); } catch (e) { showToast('存储空间不足', 'error'); }
+        }
+
+        function goToPage(pageName) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            const targetPage = document.getElementById('page-' + pageName);
+            if (targetPage) { targetPage.classList.add('active'); currentPage = pageName; }
+            const navBack = document.getElementById('navBack');
+            const navTitle = document.getElementById('navTitle');
+            if (pageName === 'home') {
+                navBack.classList.remove('show'); navTitle.textContent = '🎯 幸运抽奖';
+            } else if (pageName === 'result') {
+                navBack.classList.add('show'); navTitle.textContent = '🏆 中奖名单';
+            } else if (pageName === 'admin') {
+                navBack.classList.add('show'); navTitle.textContent = '⚙️ 管理面板';
+            }
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            updateUI();
+            if (pageName === 'admin') renderAdminPage();
+            if (pageName === 'result') renderResultPage();
+        }
+
+        function updateUI() {
+            const now = Date.now();
+            const deadline = new Date(CONFIG.DEADLINE).getTime();
+            const isEnded = now >= deadline;
+            const hasDrawn = winners.length > 0;
+
+            const statusBadge = document.getElementById('statusBadge');
+            if (hasDrawn) {
+                statusBadge.innerHTML = '<span class="status-badge status-ended"><span class="status-dot red"></span> 已开奖</span>';
+            } else if (isEnded) {
+                statusBadge.innerHTML = '<span class="status-badge status-ended"><span class="status-dot red"></span> 活动已结束</span>';
+            } else {
+                statusBadge.innerHTML = '<span class="status-badge status-active"><span class="status-dot green"></span> 活动进行中</span>';
+            }
+
+            const formCard = document.getElementById('formCard');
+            const endedCard = document.getElementById('endedCard');
+            const submitBtn = document.getElementById('submitBtn');
+            const inputName = document.getElementById('inputName');
+            const uploadArea = document.getElementById('uploadArea');
+
+            if (isEnded || hasDrawn) {
+                if (formCard) formCard.style.display = 'none';
+                if (endedCard) endedCard.style.display = '';
+                if (submitBtn) submitBtn.disabled = true;
+                if (inputName) inputName.disabled = true;
+                if (uploadArea) uploadArea.style.pointerEvents = 'none';
+            } else {
+                if (formCard) formCard.style.display = '';
+                if (endedCard) endedCard.style.display = 'none';
+                if (submitBtn) submitBtn.disabled = false;
+                if (inputName) inputName.disabled = false;
+                if (uploadArea) uploadArea.style.pointerEvents = 'auto';
+            }
+
+            const countEl = document.getElementById('participantCount');
+            if (countEl) countEl.textContent = allParticipants.length;
+            updateCountdown();
+        }
+
+        function updateCountdown() {
+            const now = Date.now();
+            const deadline = new Date(CONFIG.DEADLINE).getTime();
+            const diff = deadline - now;
+            const cdArea = document.getElementById('countdownArea');
+            if (!cdArea) return;
+            if (diff <= 0) {
+                cdArea.innerHTML = '<span style="color:#FF4D4F;font-weight:600;">活动已截止</span>';
+                return;
+            }
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+            document.getElementById('cdDay').textContent = String(days).padStart(2, '0');
+            document.getElementById('cdHour').textContent = String(hours).padStart(2, '0');
+            document.getElementById('cdMin').textContent = String(minutes).padStart(2, '0');
+            document.getElementById('cdSec').textContent = String(seconds).padStart(2, '0');
+        }
+
+        // 自动开奖检查
+        function checkAutoDraw() {
+            if (autoDrawTriggered) return;
+            const now = Date.now();
+            const deadline = new Date(CONFIG.DEADLINE).getTime();
+            // 截止时间已到，且尚未抽奖，且有参与者
+            if (now >= deadline && winners.length === 0 && allParticipants.length > 0) {
+                autoDrawTriggered = true;
+                executeDraw(true); // 传入 true 表示自动开奖，不弹出提前确认
+            }
+        }
+
+        // 手动/自动抽奖，参数 isAuto 表示是否自动触发
+        function executeDraw(isAuto = false) {
+            const now = Date.now();
+            const deadline = new Date(CONFIG.DEADLINE).getTime();
+            const isBeforeDeadline = now < deadline;
+
+            // 手动开奖且未到截止时间，需要确认
+            if (!isAuto && isBeforeDeadline) {
+                if (!confirm('当前尚未到截止时间，确定要提前开奖吗？')) return;
+            }
+
+            // 自动开奖不再重复检查（已由checkAutoDraw保证）
+            if (allParticipants.length === 0) {
+                if (!isAuto) showToast('没有参与者，无法抽奖', 'error');
+                return;
+            }
+
+            // 如果已经开过奖，手动调用时询问是否重新抽奖
+            if (winners.length > 0 && !isAuto) {
+                if (!confirm('已经抽过奖了，确定要重新抽奖吗？\n这将覆盖之前的中奖结果。')) return;
+                winners = [];
+            }
+
+            const winnerCount = Math.min(CONFIG.WINNER_COUNT, allParticipants.length);
+            const pool = [...allParticipants];
+            for (let i = pool.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [pool[i], pool[j]] = [pool[j], pool[i]];
+            }
+            winners = pool.slice(0, winnerCount).map((p, index) => ({
+                ...p,
+                winOrder: index + 1,
+                winTime: now,
+                winTimeStr: formatTime(now),
+            }));
+            saveWinners();
+            autoDrawTriggered = true; // 标记已开奖
+            showToast(`🎉 抽奖完成！共抽出 ${winners.length} 位幸运儿`, 'success');
+            spawnConfetti(60);
+            renderAdminPage();
+            updateUI();
+            // 如果当前在首页，自动跳转到结果页？可加可不加，保持当前页面
+        }
+
+        function resetDraw() {
+            if (winners.length === 0) { showToast('暂无抽奖结果', 'warning'); return; }
+            if (confirm('确定要清空所有中奖记录吗？此操作不可恢复。')) {
+                winners = [];
+                autoDrawTriggered = false;
+                saveWinners();
+                showToast('已重置抽奖结果', 'success');
+                renderAdminPage();
+                updateUI();
+            }
+        }
+
+        function populateConfigFields() {
+            const deadlineInput = document.getElementById('configDeadline');
+            const winnerCountInput = document.getElementById('configWinnerCount');
+            if (deadlineInput) {
+                const dt = CONFIG.DEADLINE.replace(' ', 'T');
+                deadlineInput.value = dt.substring(0, 16);
+            }
+            if (winnerCountInput) winnerCountInput.value = CONFIG.WINNER_COUNT;
+        }
+
+        function saveConfig() {
+            const deadlineInput = document.getElementById('configDeadline');
+            const winnerCountInput = document.getElementById('configWinnerCount');
+            if (!deadlineInput || !winnerCountInput) return;
+            const newDeadlineRaw = deadlineInput.value;
+            const newWinnerCount = parseInt(winnerCountInput.value, 10);
+            if (!newDeadlineRaw) { showToast('请选择有效的截止时间', 'warning'); return; }
+            const deadlineDate = new Date(newDeadlineRaw);
+            if (isNaN(deadlineDate.getTime())) { showToast('截止时间格式错误', 'error'); return; }
+            const year = deadlineDate.getFullYear();
+            const month = String(deadlineDate.getMonth() + 1).padStart(2, '0');
+            const day = String(deadlineDate.getDate()).padStart(2, '0');
+            const hours = String(deadlineDate.getHours()).padStart(2, '0');
+            const minutes = String(deadlineDate.getMinutes()).padStart(2, '0');
+            const formattedDeadline = `${year}-${month}-${day} ${hours}:${minutes}:00`;
+            if (isNaN(newWinnerCount) || newWinnerCount < 1 || newWinnerCount > 100) {
+                showToast('中奖人数需为1-100之间的整数', 'warning'); return;
+            }
+            CONFIG.DEADLINE = formattedDeadline;
+            CONFIG.WINNER_COUNT = newWinnerCount;
+            saveConfigToStorage();
+            document.getElementById('adminDeadline').textContent = formattedDeadline;
+            document.getElementById('adminWinnerCount').textContent = newWinnerCount;
+            document.getElementById('configDeadline').value = formattedDeadline.replace(' ', 'T').substring(0, 16);
+            document.getElementById('configWinnerCount').value = newWinnerCount;
+            // 如果修改截止时间后，当前时间已超过新截止时间且未开奖，自动触发检查
+            autoDrawTriggered = false; // 重置自动开奖标记，让下次检查生效
+            updateUI();
+            showToast('✅ 配置已保存并生效', 'success');
+        }
+
+        function showAdminModal() {
+            document.getElementById('adminModal').style.display = 'flex';
+            document.getElementById('adminPasswordInput').value = '';
+            document.getElementById('adminPasswordInput').focus();
+        }
+        function closeAdminModal(event) {
+            if (event && event.target !== document.getElementById('adminModal')) return;
+            document.getElementById('adminModal').style.display = 'none';
+        }
+        function verifyAdmin() {
+            const password = document.getElementById('adminPasswordInput').value;
+            if (password === CONFIG.ADMIN_PASSWORD) {
+                document.getElementById('adminModal').style.display = 'none';
+                goToPage('admin');
+                showToast('✅ 验证成功', 'success');
+            } else {
+                showToast('❌ 密码错误', 'error');
+                document.getElementById('adminPasswordInput').value = '';
+                document.getElementById('adminPasswordInput').focus();
+            }
+        }
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && document.getElementById('adminModal').style.display === 'flex') verifyAdmin();
+        });
+
+        function renderAdminPage() {
+            document.getElementById('adminTotalCount').textContent = allParticipants.length;
+            document.getElementById('adminWinnerCount').textContent = CONFIG.WINNER_COUNT;
+            document.getElementById('adminDeadline').textContent = CONFIG.DEADLINE;
+            populateConfigFields();
+
+            const listContainer = document.getElementById('adminParticipantList');
+            if (allParticipants.length === 0) {
+                listContainer.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-text">暂无参与者</div></div>';
+            } else {
+                listContainer.innerHTML = allParticipants.map((p, index) => `
+                    <div class="participant-item">
+                        <img class="participant-avatar" src="${p.imageData}" alt="${p.name}" onerror="this.style.background='#E0E0E0'">
+                        <div class="participant-info"><div class="participant-name">${escapeHtml(p.name)}</div><div class="participant-time">${p.timeStr}</div></div>
+                        <div class="participant-index">${index+1}</div>
+                    </div>`).join('');
+            }
+
+            const winnerSection = document.getElementById('adminWinnerSection');
+            const winnerList = document.getElementById('adminWinnerList');
+            if (winners.length > 0) {
+                winnerSection.style.display = '';
+                winnerList.innerHTML = `
+                    <div class="winner-list">${winners.map(w => `<div class="winner-tag">🏆 ${escapeHtml(w.name)}</div>`).join('')}</div>
+                    ${winners.map(w => `
+                        <div class="winner-card" style="margin-top:8px;">
+                            <div style="display:flex;align-items:center;gap:12px;">
+                                <img class="winner-avatar" src="${w.imageData}" alt="${w.name}" onerror="this.style.background='#FFD700'">
+                                <div>
+                                    <div class="winner-name">${escapeHtml(w.name)}</div>
+                                    <div style="font-size:12px;color:#8B6914;">第${w.winOrder}位</div>
+                                    <div style="font-size:11px;color:#A08040;">${w.winTimeStr}</div>
+                                </div>
+                            </div>
+                        </div>`).join('')}`;
+            } else {
+                winnerSection.style.display = 'none';
+                winnerList.innerHTML = '';
+            }
+
+            const drawBtn = document.getElementById('adminDrawBtn');
+            drawBtn.disabled = false; // 始终允许手动开奖
+            drawBtn.textContent = winners.length > 0 ? '🎯 重新抽奖' : '🎯 手动开奖';
+        }
+
+        function renderResultPage() {
+            document.getElementById('winnerCountDisplay').textContent = winners.length;
+            const container = document.getElementById('winnerListContainer');
+            if (winners.length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-icon">🎯</div><div class="empty-text">暂未开奖，敬请期待</div></div>';
+            } else {
+                container.innerHTML = winners.map(w => `
+                    <div class="winner-card">
+                        <div style="display:flex;align-items:center;gap:12px;">
+                            <img class="winner-avatar" src="${w.imageData}" alt="${w.name}">
+                            <div><div class="winner-name">🎉 ${escapeHtml(w.name)}</div><div style="font-size:12px;color:#8B6914;">第${w.winOrder}位</div></div>
+                        </div>
+                    </div>`).join('');
+            }
+        }
+
+        function triggerUpload() {
+            if (Date.now() >= new Date(CONFIG.DEADLINE).getTime() || winners.length > 0) {
+                showToast('活动已结束，无法上传', 'warning'); return;
+            }
+            document.getElementById('fileInput').click();
+        }
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            if (!file.type.match(/^image\/(jpeg|png|gif|webp)$/)) { showToast('仅支持 JPG/PNG/GIF/WEBP', 'error'); return; }
+            if (file.size > CONFIG.MAX_IMAGE_SIZE) { showToast('图片不能超过5MB', 'error'); return; }
+            const reader = new FileReader();
+            reader.onload = e => {
+                selectedImageData = e.target.result;
+                document.getElementById('uploadPreview').src = selectedImageData;
+                document.getElementById('uploadArea').classList.add('has-image');
+            };
+            reader.readAsDataURL(file);
+            event.target.value = '';
+        }
+
+        function removeImage(e) { e.stopPropagation(); removeImageSilent(); }
+        function removeImageSilent() {
+            selectedImageData = null;
+            document.getElementById('uploadPreview').src = '';
+            document.getElementById('uploadArea').classList.remove('has-image');
+        }
+
+        function submitParticipant() {
+            if (Date.now() >= new Date(CONFIG.DEADLINE).getTime() || winners.length > 0) { showToast('活动已结束', 'warning'); return; }
+            const name = document.getElementById('inputName').value.trim();
+            if (!name) { showToast('请输入姓名', 'warning'); return; }
+            if (!selectedImageData) { showToast('请上传图片', 'warning'); return; }
+            const exists = allParticipants.some(p => p.name === name && p.imageData.substring(0,100) === selectedImageData.substring(0,100));
+            if (exists) { showToast('请勿重复参与', 'warning'); return; }
+            allParticipants.push({ id: generateId(), name, imageData: selectedImageData, timestamp: Date.now(), timeStr: formatTime(Date.now()) });
+            saveParticipants();
+            document.getElementById('inputName').value = '';
+            removeImageSilent();
+            updateUI();
+            showToast('🎉 参与成功！', 'success');
+            spawnConfetti();
+        }
+
+        function generateId() { return 'p_' + Date.now() + '_' + Math.random().toString(36).substring(2,9); }
+        function formatTime(ts) {
+            const d = new Date(ts);
+            return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+        }
+        function escapeHtml(str) { const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
+        function showToast(msg, type='') {
+            const t = document.getElementById('toast');
+            if (t._timeout) clearTimeout(t._timeout);
+            t.textContent = msg; t.className = 'toast '+type+' show';
+            t._timeout = setTimeout(() => t.classList.remove('show'), 2000);
+        }
+        function spawnConfetti(count=30) {
+            const container = document.getElementById('confettiContainer');
+            const colors = ['#FF6B6B','#FFD93D','#6BCB77','#4D96FF','#FF6FB7','#845EC2','#FF9671','#00C9A7'];
+            for (let i=0;i<count;i++) {
+                const p = document.createElement('div'); p.className='confetti-piece';
+                p.style.left=Math.random()*100+'%'; p.style.top=-(Math.random()*40+10)+'px';
+                p.style.width=p.style.height=(Math.random()*8+6)+'px';
+                p.style.background=colors[Math.floor(Math.random()*colors.length)];
+                p.style.animationDuration=(Math.random()*2+2)+'s';
+                p.style.animationDelay=Math.random()*0.8+'s';
+                container.appendChild(p);
+            }
+            setTimeout(() => container.innerHTML='', 3500);
+        }
+
+        document.addEventListener('DOMContentLoaded', init);
+        window.addEventListener('beforeunload', () => { saveParticipants(); saveWinners(); });
+        document.getElementById('adminModal').addEventListener('click', e => { if(e.target === e.currentTarget) closeAdminModal(); });
+    </script>
+</body>
+</html>
